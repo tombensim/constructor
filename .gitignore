@@ -35,8 +35,6 @@ prisma/dev.db-journal
 dev.db
 dev.db-journal
 
-# PDF data files (large binaries)
-data/pdfs/*.pdf
 
 # vercel
 .vercel

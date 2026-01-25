@@ -13,28 +13,44 @@ import {
   AlertTriangle,
   Clock,
   ArrowLeft,
+  Construction,
 } from 'lucide-react';
 import {
   categoryHebrewNames,
   categoryColors,
   WorkCategory,
+  CATEGORY_DISPLAY_ORDER,
 } from '@/lib/status-mapper';
+
+// Sort category stats by fixed display order (OTHER always last)
+function sortCategoryStats(stats: CategoryStat[]): CategoryStat[] {
+  return [...stats].sort((a, b) => {
+    const indexA = CATEGORY_DISPLAY_ORDER.indexOf(a.category as WorkCategory);
+    const indexB = CATEGORY_DISPLAY_ORDER.indexOf(b.category as WorkCategory);
+    const orderA = indexA === -1 ? CATEGORY_DISPLAY_ORDER.length - 1 : indexA;
+    const orderB = indexB === -1 ? CATEGORY_DISPLAY_ORDER.length - 1 : indexB;
+    return orderA - orderB;
+  });
+}
+
+interface CategoryStat {
+  category: string;
+  categoryHebrew: string;
+  progress: number;
+  itemCount: number;
+  issues: number;
+}
 
 interface ApartmentData {
   id: string;
   number: string;
   floor: number | null;
-  total: number;
-  completed: number;
-  defects: number;
-  inProgress: number;
   progress: number;
-  categoryStats: {
-    category: string;
-    total: number;
-    completed: number;
-    progress: number;
-  }[];
+  issues: number;
+  completed: number;
+  inProgress: number;
+  itemCount: number;
+  categoryStats: CategoryStat[];
 }
 
 export default function ApartmentsPage() {
@@ -85,80 +101,83 @@ export default function ApartmentsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {apartments.map((apt) => (
-          <Link key={apt.id} href={`/apartments/${apt.number}`}>
-            <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    דירה {apt.number}
-                  </CardTitle>
-                  <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Overall Progress */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-muted-foreground">
-                      התקדמות כללית
-                    </span>
-                    <span className="text-2xl font-bold">{apt.progress}%</span>
+            <Link key={apt.id} href={`/apartments/${apt.number}`}>
+              <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="flex items-center gap-2">
+                      {apt.number === 'פיתוח' ? (
+                        <Construction className="h-5 w-5" />
+                      ) : (
+                        <Building2 className="h-5 w-5" />
+                      )}
+                      {apt.number === 'פיתוח' ? 'פיתוח' : `דירה ${apt.number}`}
+                    </CardTitle>
+                    <ArrowLeft className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <Progress value={apt.progress} className="h-3" />
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Overall Progress */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-muted-foreground">
+                        התקדמות כללית
+                      </span>
+                      <span className="text-2xl font-bold">{apt.progress}%</span>
+                    </div>
+                    <Progress value={apt.progress} className="h-3" />
+                  </div>
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-green-50 rounded-lg p-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 mx-auto" />
-                    <div className="text-lg font-bold text-green-600">
-                      {apt.completed}
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-green-50 rounded-lg p-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 mx-auto" />
+                      <div className="text-lg font-bold text-green-600">
+                        {apt.completed}
+                      </div>
+                      <div className="text-xs text-muted-foreground">הושלמו</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">הושלמו</div>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-2">
-                    <Clock className="h-4 w-4 text-blue-600 mx-auto" />
-                    <div className="text-lg font-bold text-blue-600">
-                      {apt.inProgress}
+                    <div className="bg-blue-50 rounded-lg p-2">
+                      <Clock className="h-4 w-4 text-blue-600 mx-auto" />
+                      <div className="text-lg font-bold text-blue-600">
+                        {apt.inProgress}
+                      </div>
+                      <div className="text-xs text-muted-foreground">בטיפול</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">בטיפול</div>
-                  </div>
-                  <div className="bg-orange-50 rounded-lg p-2">
-                    <AlertTriangle className="h-4 w-4 text-orange-600 mx-auto" />
-                    <div className="text-lg font-bold text-orange-600">
-                      {apt.defects}
+                    <div className="bg-orange-50 rounded-lg p-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-600 mx-auto" />
+                      <div className="text-lg font-bold text-orange-600">
+                        {apt.issues}
+                      </div>
+                      <div className="text-xs text-muted-foreground">ליקויים</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">ליקויים</div>
                   </div>
-                </div>
 
-                {/* Category Breakdown */}
-                {apt.categoryStats.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {apt.categoryStats.slice(0, 4).map((cat) => (
-                      <CategoryProgressBar
-                        key={cat.category}
-                        category={
-                          categoryHebrewNames[cat.category as WorkCategory] ||
-                          cat.category
-                        }
-                        completed={cat.completed}
-                        total={cat.total}
-                        color={categoryColors[cat.category as WorkCategory]}
-                      />
-                    ))}
-                    {apt.categoryStats.length > 4 && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        +{apt.categoryStats.length - 4} קטגוריות נוספות
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+                  {/* Category Breakdown */}
+                  {apt.categoryStats.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t">
+                      {sortCategoryStats(apt.categoryStats).slice(0, 4).map((cat) => (
+                        <CategoryProgressBar
+                          key={cat.category}
+                          category={cat.categoryHebrew || categoryHebrewNames[cat.category as WorkCategory] || cat.category}
+                          progress={cat.progress}
+                          itemCount={cat.itemCount}
+                          issues={cat.issues}
+                          color={categoryColors[cat.category as WorkCategory]}
+                        />
+                      ))}
+                      {apt.categoryStats.length > 4 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          +{apt.categoryStats.length - 4} קטגוריות נוספות
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+          )
+        )}
       </div>
     </div>
   );

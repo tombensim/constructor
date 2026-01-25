@@ -22,6 +22,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Brush,
 } from 'recharts';
 import {
   categoryHebrewNames,
@@ -29,26 +30,51 @@ import {
   WorkCategory,
 } from '@/lib/status-mapper';
 
+interface ApartmentProgress {
+  progress: number;
+  issues: number;
+  categoryProgress: Record<string, number>;
+}
+
 interface TimelineData {
   date: string;
   reportId: string;
   overallProgress: number;
+  totalIssues: number;
   totalItems: number;
-  completedItems: number;
-  apartmentProgress: Record<string, { total: number; completed: number; progress: number }>;
+  apartmentProgress: Record<string, ApartmentProgress>;
 }
 
 interface CategoryProgress {
   date: string;
-  categories: Record<string, { total: number; completed: number; progress: number }>;
+  categories: Record<string, { progress: number; issues: number }>;
+}
+
+interface CategoryInfo {
+  id: string;
+  name: string;
 }
 
 interface TimelineResponse {
   timelineData: TimelineData[];
   categoryProgress: CategoryProgress[];
   apartments: string[];
-  categories: string[];
+  categories: CategoryInfo[];
   dateRange: { start: string | null; end: string | null };
+}
+
+// Deduplicate timeline data by date, keeping only the last entry for each unique date
+function deduplicateByDate<T extends { date: string }>(data: T[]): T[] {
+  const dateMap = new Map<string, T>();
+  for (const item of data) {
+    // Extract just the date part (YYYY-MM-DD) to handle timezone differences
+    const dateKey = item.date.split('T')[0];
+    dateMap.set(dateKey, item);
+  }
+  // Return sorted by date
+  return Array.from(dateMap.values()).sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 }
 
 // Colors for apartments
@@ -61,6 +87,7 @@ const apartmentColors: Record<string, string> = {
   '10': '#06b6d4',
   '11': '#ec4899',
   '14': '#84cc16',
+  'פיתוח': '#78716c', // stone-500 for development
 };
 
 export default function TimelinePage() {
@@ -115,40 +142,46 @@ export default function TimelinePage() {
     );
   }
 
-  // Prepare data for charts
-  const overallProgressData = data.timelineData.map((d) => ({
-    date: d.date,
-    progress: d.overallProgress,
-    completed: d.completedItems,
-    total: d.totalItems,
-  }));
+  // Prepare data for charts (deduplicated by date)
+  const overallProgressData = deduplicateByDate(
+    data.timelineData.map((d) => ({
+      date: d.date,
+      progress: d.overallProgress,
+      issues: d.totalIssues,
+      items: d.totalItems,
+    }))
+  );
 
-  // Prepare apartment progress data
-  const apartmentProgressData = data.timelineData.map((d) => {
-    const result: Record<string, number | string> = { date: d.date };
-    data.apartments.forEach((apt) => {
-      result[`apt_${apt}`] = d.apartmentProgress[apt]?.progress || 0;
-    });
-    return result;
-  });
+  // Prepare apartment progress data (deduplicated by date)
+  const apartmentProgressData = deduplicateByDate(
+    data.timelineData.map((d) => {
+      const result: Record<string, number | string> = { date: d.date };
+      data.apartments.forEach((apt) => {
+        result[`apt_${apt}`] = d.apartmentProgress[apt]?.progress || 0;
+      });
+      return result;
+    })
+  );
 
   // Prepare category progress data
   const topCategories = [
     WorkCategory.ELECTRICAL,
     WorkCategory.PLUMBING,
     WorkCategory.AC,
-    WorkCategory.TILING,
     WorkCategory.FLOORING,
+    WorkCategory.SPRINKLERS,
+    WorkCategory.DRYWALL,
     WorkCategory.PAINTING,
+    WorkCategory.OTHER, // Includes פיתוח
   ];
 
-  const categoryProgressData = data.categoryProgress.map((d) => {
+  const categoryProgressData = deduplicateByDate(data.categoryProgress.map((d) => {
     const result: Record<string, number | string> = { date: d.date };
     topCategories.forEach((cat) => {
       result[cat] = d.categories[cat]?.progress || 0;
     });
     return result;
-  });
+  }));
 
   return (
     <div className="space-y-6">
@@ -200,8 +233,11 @@ export default function TimelinePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
+                      type="category"
+                      interval="preserveStartEnd"
                       tickFormatter={(value) => {
                         const d = new Date(value);
+                        if (isNaN(d.getTime())) return value;
                         const day = d.getDate().toString().padStart(2, '0');
                         const month = (d.getMonth() + 1).toString().padStart(2, '0');
                         const year = d.getFullYear().toString().slice(-2);
@@ -210,13 +246,15 @@ export default function TimelinePage() {
                     />
                     <YAxis domain={[0, 100]} />
                     <Tooltip
-                      labelFormatter={(value) =>
-                        new Date(value as string).toLocaleDateString('he-IL')
-                      }
+                      labelFormatter={(value) => {
+                        const d = new Date(value as string);
+                        if (isNaN(d.getTime())) return String(value);
+                        return d.toLocaleDateString('he-IL');
+                      }}
                       formatter={(value, name) => {
                         if (name === 'progress') return [`${value}%`, 'התקדמות'];
-                        if (name === 'completed') return [value, 'הושלמו'];
-                        if (name === 'total') return [value, 'סה״כ'];
+                        if (name === 'issues') return [value, 'ליקויים'];
+                        if (name === 'items') return [value, 'פריטים'];
                         return [value, name];
                       }}
                     />
@@ -227,6 +265,16 @@ export default function TimelinePage() {
                       strokeWidth={2}
                       fill="url(#progressGradient)"
                       name="progress"
+                    />
+                    <Brush
+                      dataKey="date"
+                      height={30}
+                      stroke="#3b82f6"
+                      tickFormatter={(value) => {
+                        const d = new Date(value);
+                        if (isNaN(d.getTime())) return '';
+                        return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+                      }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -273,8 +321,11 @@ export default function TimelinePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
+                      type="category"
+                      interval="preserveStartEnd"
                       tickFormatter={(value) => {
                         const d = new Date(value);
+                        if (isNaN(d.getTime())) return value;
                         const day = d.getDate().toString().padStart(2, '0');
                         const month = (d.getMonth() + 1).toString().padStart(2, '0');
                         const year = d.getFullYear().toString().slice(-2);
@@ -283,16 +334,24 @@ export default function TimelinePage() {
                     />
                     <YAxis domain={[0, 100]} />
                     <Tooltip
-                      labelFormatter={(value) =>
-                        new Date(value as string).toLocaleDateString('he-IL')
-                      }
-                      formatter={(value, name) => [
-                        `${value}%`,
-                        `דירה ${String(name).replace('apt_', '')}`,
-                      ]}
+                      labelFormatter={(value) => {
+                        const d = new Date(value as string);
+                        if (isNaN(d.getTime())) return String(value);
+                        return d.toLocaleDateString('he-IL');
+                      }}
+                      formatter={(value, name) => {
+                        const aptName = String(name).replace('apt_', '');
+                        return [
+                          `${value}%`,
+                          aptName === 'פיתוח' ? 'פיתוח' : `דירה ${aptName}`,
+                        ];
+                      }}
                     />
                     <Legend
-                      formatter={(value) => `דירה ${value.replace('apt_', '')}`}
+                      formatter={(value) => {
+                        const aptName = value.replace('apt_', '');
+                        return aptName === 'פיתוח' ? 'פיתוח' : `דירה ${aptName}`;
+                      }}
                     />
                     {data.apartments.map((apt) => (
                       <Line
@@ -304,6 +363,16 @@ export default function TimelinePage() {
                         dot={{ r: 4 }}
                       />
                     ))}
+                    <Brush
+                      dataKey="date"
+                      height={30}
+                      stroke="#3b82f6"
+                      tickFormatter={(value) => {
+                        const d = new Date(value);
+                        if (isNaN(d.getTime())) return '';
+                        return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+                      }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -321,7 +390,7 @@ export default function TimelinePage() {
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: apartmentColors[apt] || '#6b7280' }}
                       />
-                      <span className="text-sm">דירה {apt}</span>
+                      <span className="text-sm">{apt === 'פיתוח' ? 'פיתוח' : `דירה ${apt}`}</span>
                       <Badge variant="outline">{latestProgress}%</Badge>
                     </div>
                   );
@@ -344,8 +413,11 @@ export default function TimelinePage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
+                      type="category"
+                      interval="preserveStartEnd"
                       tickFormatter={(value) => {
                         const d = new Date(value);
+                        if (isNaN(d.getTime())) return value;
                         const day = d.getDate().toString().padStart(2, '0');
                         const month = (d.getMonth() + 1).toString().padStart(2, '0');
                         const year = d.getFullYear().toString().slice(-2);
@@ -354,9 +426,11 @@ export default function TimelinePage() {
                     />
                     <YAxis domain={[0, 100]} />
                     <Tooltip
-                      labelFormatter={(value) =>
-                        new Date(value as string).toLocaleDateString('he-IL')
-                      }
+                      labelFormatter={(value) => {
+                        const d = new Date(value as string);
+                        if (isNaN(d.getTime())) return String(value);
+                        return d.toLocaleDateString('he-IL');
+                      }}
                       formatter={(value, name) => [
                         `${value}%`,
                         categoryHebrewNames[String(name) as WorkCategory] || name,
@@ -377,6 +451,16 @@ export default function TimelinePage() {
                         dot={{ r: 3 }}
                       />
                     ))}
+                    <Brush
+                      dataKey="date"
+                      height={30}
+                      stroke="#3b82f6"
+                      tickFormatter={(value) => {
+                        const d = new Date(value);
+                        if (isNaN(d.getTime())) return '';
+                        return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
+                      }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

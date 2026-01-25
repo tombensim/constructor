@@ -76,8 +76,11 @@ export function ProgressBar({
 
 interface CategoryProgressBarProps {
   category: string;
-  completed: number;
-  total: number;
+  completed?: number;
+  total?: number;
+  progress?: number;
+  itemCount?: number;
+  issues?: number;
   color?: string;
 }
 
@@ -85,16 +88,28 @@ export function CategoryProgressBar({
   category,
   completed,
   total,
+  progress: progressProp,
+  itemCount,
+  issues,
   color,
 }: CategoryProgressBarProps) {
-  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+  // Support both old (completed/total) and new (progress/itemCount) interfaces
+  const progress = progressProp !== undefined 
+    ? progressProp 
+    : (total && total > 0 ? Math.round(((completed || 0) / total) * 100) : 0);
+  
+  const displayCount = itemCount !== undefined ? itemCount : total;
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">{category}</span>
         <span className="text-sm text-muted-foreground">
-          {completed}/{total}
+          {progress}%
+          {displayCount !== undefined && ` (${displayCount})`}
+          {issues !== undefined && issues > 0 && (
+            <span className="text-orange-500 mr-1">⚠{issues}</span>
+          )}
         </span>
       </div>
       <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">

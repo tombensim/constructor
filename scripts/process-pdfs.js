@@ -59,43 +59,211 @@ const hebrewStatusMap = {
 
 // Category mapping
 const hebrewCategoryMap = {
+  // חשמל
   'חשמל': 'ELECTRICAL',
+  // אינסטלציה
   'אינסטלציה': 'PLUMBING',
+  // מיזוג
   'מיזוג': 'AC',
   'מיזוג אויר': 'AC',
-  'דלת כניסה': 'ENTRY_DOOR',
-  'סניטריה': 'SANITARY',
+  // ריצוף וחיפוי
   'ריצוף': 'FLOORING',
-  'חיפוי': 'TILING',
+  'חיפוי': 'FLOORING',
+  // ספרינקלרים וכיבוי
   'ספרינקלרים': 'SPRINKLERS',
   'ספרינקלר': 'SPRINKLERS',
+  'כיבוי': 'SPRINKLERS',
+  'כיבוי אש': 'SPRINKLERS',
+  // גבס והנמכות
+  'גבס': 'DRYWALL',
+  'הנמכות': 'DRYWALL',
+  // איטום
   'איטום': 'WATERPROOFING',
+  // צבע
   'צביעה': 'PAINTING',
-  'חלונות': 'WINDOWS',
+  'צבע': 'PAINTING',
+  // מטבח
   'מטבח': 'KITCHEN',
-  'כללי': 'GENERAL',
-  'פיתוח': 'DEVELOPMENT',
-  'עבודות פיתוח': 'DEVELOPMENT',
+  // אחר (OTHER) - includes חלונות, דלת כניסה, סניטריה, פיתוח, כללי
+  'חלונות': 'OTHER',
+  'דלת כניסה': 'OTHER',
+  'כללי': 'OTHER',
+  'סניטריה': 'OTHER',
+  'פיתוח': 'OTHER',
+  'עבודות פיתוח': 'OTHER',
+  'אחר': 'OTHER',
 };
 
-function normalizeStatus(hebrewStatus) {
-  const trimmed = hebrewStatus.trim();
-  if (hebrewStatusMap[trimmed]) return hebrewStatusMap[trimmed];
-  for (const [hebrew, status] of Object.entries(hebrewStatusMap)) {
-    if (trimmed.includes(hebrew)) return status;
+// Description-based category override
+// If the description contains these keywords, override the category
+const descriptionCategoryMap = {
+  // ריצוף וחיפוי
+  'שיפועים': 'FLOORING',
+  'שיפוע': 'FLOORING',
+  'ריצוף': 'FLOORING',
+  'אריחים': 'FLOORING',
+  'פרקט': 'FLOORING',
+  'חיפוי': 'FLOORING',
+  'מישק': 'FLOORING',
+  'מישק הפרדה': 'FLOORING',
+  'פנל': 'FLOORING',
+  'פנלים': 'FLOORING',
+  'קרמיקה': 'FLOORING',
+  // חשמל
+  'LAN': 'ELECTRICAL',
+  'שקע': 'ELECTRICAL',
+  'נקודות חשמל': 'ELECTRICAL',
+  'תאורה': 'ELECTRICAL',
+  'מפסק': 'ELECTRICAL',
+  'חיווט': 'ELECTRICAL',
+  // אינסטלציה
+  'צנרת': 'PLUMBING',
+  'ברז': 'PLUMBING',
+  'ניקוז': 'PLUMBING',
+  // מיזוג
+  'מזגן': 'AC',
+  'מיזוג': 'AC',
+  // ספרינקלרים וכיבוי
+  'כיבוי': 'SPRINKLERS',
+  'כיבוי אש': 'SPRINKLERS',
+  'תוכנית כיבוי': 'SPRINKLERS',
+  'תוכניות כיבוי': 'SPRINKLERS',
+  'ספרינקלר': 'SPRINKLERS',
+  // גבס והנמכות
+  'הנמכות': 'DRYWALL',
+  'הנמכה': 'DRYWALL',
+  'הנמכת': 'DRYWALL',
+  'גבס': 'DRYWALL',
+  'סינר': 'DRYWALL',
+  'סינרים': 'DRYWALL',
+  'קונסטרוקציה': 'DRYWALL',
+  'קונסטרוקצייה': 'DRYWALL',
+  // צבע
+  'צבע': 'PAINTING',
+  'יד ראשונה': 'PAINTING',
+  'יד שניה': 'PAINTING',
+  'יד שנייה': 'PAINTING',
+  'צביעה': 'PAINTING',
+  // אחר (OTHER) - דלת כניסה, חלונות, סניטריה
+  'דלת כניסה': 'OTHER',
+  'חלון': 'OTHER',
+  'תריס': 'OTHER',
+  'אסלה': 'OTHER',
+  'כיור': 'OTHER',
+  'מקלחת': 'OTHER',
+  'אמבטיה': 'OTHER',
+};
+
+// Negative keywords that ALWAYS indicate a defect, regardless of other words
+const DEFECT_KEYWORDS = [
+  'אי תיאומים',
+  'אי תאומים',
+  'נמצאו אי',
+  'קיימים אי',
+  'יש הערות',
+  'יש ליקויים',
+  'ליקוי',
+  'ליקויים',
+  'לא תקין',
+  'חסר',
+  'חסרה',
+  'חסרות',
+  'חסרים',
+  'שבור',
+  'שבורה',
+  'שבורים',
+  'סדוק',
+  'סדוקה',
+  'סדוקים',
+  'פגם',
+  'פגמים',
+  'בעיה',
+  'בעיות',
+  'לתקן',
+  'תיקון',
+  'לא בוצע',
+  'לא הותקן',
+  'לא הותקנו',
+  'חתוך',
+  'חתוכים',
+  'להחליף',
+  'החלפה',
+  'נזק',
+  'נזקים',
+  'לא הושלם',
+  'טעון',  // טעון תיקון, טעון בדיקה
+];
+
+// Keywords that indicate partial/in-progress work
+const PARTIAL_KEYWORDS = [
+  'חלקי',
+  'חלקית',
+  'בביצוע',
+  'בטיפול',
+];
+
+function normalizeStatus(hebrewStatus, notes = null, photoNotes = null) {
+  const trimmed = hebrewStatus.trim().toLowerCase();
+  const combinedText = [hebrewStatus, notes, photoNotes].filter(Boolean).join(' ').toLowerCase();
+  
+  // FIRST: Check for defect keywords in the status or notes - these override everything
+  for (const keyword of DEFECT_KEYWORDS) {
+    if (combinedText.includes(keyword.toLowerCase())) {
+      console.log(`Status "${hebrewStatus}" -> DEFECT (found keyword: "${keyword}")`);
+      return 'DEFECT';
+    }
   }
+  
+  // SECOND: Check for partial/in-progress keywords
+  for (const keyword of PARTIAL_KEYWORDS) {
+    if (trimmed.includes(keyword.toLowerCase())) {
+      console.log(`Status "${hebrewStatus}" -> IN_PROGRESS (found keyword: "${keyword}")`);
+      return 'IN_PROGRESS';
+    }
+  }
+  
+  // THIRD: Try exact match from status map
+  if (hebrewStatusMap[hebrewStatus.trim()]) {
+    return hebrewStatusMap[hebrewStatus.trim()];
+  }
+  
+  // FOURTH: Try partial match, but prioritize longer matches
+  const sortedEntries = Object.entries(hebrewStatusMap).sort((a, b) => b[0].length - a[0].length);
+  for (const [hebrew, status] of sortedEntries) {
+    if (trimmed.includes(hebrew.toLowerCase())) {
+      return status;
+    }
+  }
+  
   console.warn(`Unknown status: "${hebrewStatus}", defaulting to IN_PROGRESS`);
   return 'IN_PROGRESS';
 }
 
-function normalizeCategory(hebrewCategory) {
+function normalizeCategory(hebrewCategory, description = null) {
   const trimmed = hebrewCategory.trim();
+  
+  // FIRST: Check if description overrides the category
+  // This handles cases like "בדיקת שיפועים" which should be FLOORING even if category is "כללי"
+  if (description) {
+    const descLower = description.toLowerCase();
+    for (const [keyword, category] of Object.entries(descriptionCategoryMap)) {
+      if (descLower.includes(keyword.toLowerCase())) {
+        console.log(`Category override: "${hebrewCategory}" -> ${category} (found "${keyword}" in description)`);
+        return category;
+      }
+    }
+  }
+  
+  // SECOND: Try exact category match
   if (hebrewCategoryMap[trimmed]) return hebrewCategoryMap[trimmed];
+  
+  // THIRD: Try partial category match
   for (const [hebrew, category] of Object.entries(hebrewCategoryMap)) {
     if (trimmed.includes(hebrew)) return category;
   }
-  console.warn(`Unknown category: "${hebrewCategory}", defaulting to GENERAL`);
-  return 'GENERAL';
+  
+  console.warn(`Unknown category: "${hebrewCategory}", defaulting to OTHER`);
+  return 'OTHER';
 }
 
 function parseDate(dateStr) {
@@ -362,14 +530,19 @@ async function processPdf(filePath, projectId) {
       }
 
       for (const item of aptData.workItems || []) {
+        // Pass description to normalizeCategory for better categorization
+        const category = normalizeCategory(item.category, item.description);
+        // Pass notes to normalizeStatus to detect issues in notes
+        const status = normalizeStatus(item.status, item.notes, item.photoNotes);
+        
         await prisma.workItem.create({
           data: {
             reportId: report.id,
             apartmentId,
-            category: normalizeCategory(item.category),
+            category,
             location: item.location || null,
             description: item.description,
-            status: normalizeStatus(item.status),
+            status,
             notes: item.notes || null,
             hasPhoto: item.hasPhoto || false,
           },
@@ -408,14 +581,19 @@ async function processPdf(filePath, projectId) {
     }
 
     for (const item of extractedData.developmentItems || []) {
+      // Pass description to normalizeCategory for better categorization
+      const category = normalizeCategory(item.category, item.description);
+      // Pass notes to normalizeStatus to detect issues in notes
+      const status = normalizeStatus(item.status, item.notes, item.photoNotes);
+      
       await prisma.workItem.create({
         data: {
           reportId: report.id,
           apartmentId: null,
-          category: normalizeCategory(item.category),
+          category,
           location: item.location || null,
           description: item.description,
-          status: normalizeStatus(item.status),
+          status,
           notes: item.notes || null,
           hasPhoto: item.hasPhoto || false,
         },

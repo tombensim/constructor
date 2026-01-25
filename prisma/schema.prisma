@@ -97,3 +97,15 @@ model Inspection {
   @@unique([reportId, apartmentId, category])
   @@index([apartmentId])
 }
+
+// Snapshot for rollback capability - stores state before upload operations
+model Snapshot {
+  id          String    @id @default(cuid())
+  reason      String    // Why snapshot was created (e.g., "pre-upload: filename.pdf")
+  data        String    // JSON blob containing all reports, workItems, inspections
+  reportCount Int       // Number of reports at time of snapshot
+  createdAt   DateTime  @default(now())
+  restoredAt  DateTime? // If this snapshot was used for rollback
+  
+  @@index([createdAt])
+}

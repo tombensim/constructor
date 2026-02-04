@@ -48,3 +48,14 @@ next-env.d.ts
 # Gmail OAuth credentials (sensitive!)
 credentials.json
 gmail-token.json
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# Data and Logs
+data/pdfs/
+process-output.txt

@@ -144,6 +144,19 @@ export async function processPdf(
     });
     const apartmentMap = new Map(apartments.map((a) => [a.number, a.id]));
 
+    // Get the previous report for carry-forward logic
+    const previousReport = await prisma.report.findFirst({
+      where: {
+        projectId,
+        reportDate: { lt: reportDate },
+        processed: true,
+      },
+      orderBy: { reportDate: 'desc' },
+    });
+
+    // Track which items were extracted for each apartment
+    const extractedItemKeys = new Map<string, Set<string>>();
+
     // Process apartment work items
     for (const aptData of extractedData.apartments || []) {
       const apartmentId = apartmentMap.get(aptData.apartmentNumber);
@@ -152,12 +165,20 @@ export async function processPdf(
         continue;
       }
 
+      // Track extracted items for this apartment
+      const itemKeys = new Set<string>();
+      extractedItemKeys.set(apartmentId, itemKeys);
+
       for (const item of aptData.workItems || []) {
+        const category = normalizeCategory(item.category);
+        const itemKey = `${category}|${item.description}`;
+        itemKeys.add(itemKey);
+
         await prisma.workItem.create({
           data: {
             reportId: report.id,
             apartmentId,
-            category: normalizeCategory(item.category),
+            category,
             location: item.location || null,
             description: item.description,
             status: normalizeStatus(item.status),
@@ -194,6 +215,55 @@ export async function processPdf(
           });
           inspectionsCreated++;
         }
+      }
+    }
+
+    // CARRY FORWARD LOGIC: Copy items from previous report that weren't extracted
+    if (previousReport) {
+      let carriedForward = 0;
+
+      // For each apartment, check if there are items in previous report not in current
+      for (const apartment of apartments) {
+        const currentItemKeys = extractedItemKeys.get(apartment.id) || new Set<string>();
+
+        // Get items from previous report for this apartment
+        const previousItems = await prisma.workItem.findMany({
+          where: {
+            reportId: previousReport.id,
+            apartmentId: apartment.id,
+          },
+        });
+
+        for (const prevItem of previousItems) {
+          const itemKey = `${prevItem.category}|${prevItem.description}`;
+
+          // If this item wasn't extracted in current report, carry it forward
+          if (!currentItemKeys.has(itemKey)) {
+            // Don't carry forward completed items (they might genuinely be done)
+            // Only carry forward items with defects or in-progress status
+            const statusesToCarryForward = ['DEFECT', 'NOT_OK', 'IN_PROGRESS', 'PENDING'];
+            if (statusesToCarryForward.includes(prevItem.status)) {
+              await prisma.workItem.create({
+                data: {
+                  reportId: report.id,
+                  apartmentId: apartment.id,
+                  category: prevItem.category,
+                  location: prevItem.location,
+                  description: prevItem.description,
+                  status: prevItem.status, // Keep the same status
+                  notes: prevItem.notes ? `[העברה מדוח קודם] ${prevItem.notes}` : '[העברה מדוח קודם - לא דווח בדוח זה]',
+                  hasPhoto: false, // No photo in current report
+                },
+              });
+              carriedForward++;
+              workItemsCreated++;
+            }
+          }
+        }
+      }
+
+      if (carriedForward > 0) {
+        console.log(`Carried forward ${carriedForward} items from previous report`);
       }
     }
 

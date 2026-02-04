@@ -9,6 +9,7 @@ import {
   FileText,
   CalendarClock,
   Home,
+  Settings,
 } from 'lucide-react';
 
 const navItems = [
@@ -31,6 +32,11 @@ const navItems = [
     href: '/reports',
     label: 'דוחות',
     icon: FileText,
+  },
+  {
+    href: '/admin',
+    label: 'הגדרות',
+    icon: Settings,
   },
 ];
 

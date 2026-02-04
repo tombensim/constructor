@@ -38,7 +38,8 @@ const hebrewStatusMap: Record<string, WorkStatus> = {
   'בוצע - נמצאו אי תיאומים': WorkStatus.DEFECT,
   'נמצאו אי תאומים': WorkStatus.DEFECT,
   'נמצאו אי תיאומים': WorkStatus.DEFECT,
-  'בוצע חלקי': WorkStatus.IN_PROGRESS,
+  'בוצע חלקי': WorkStatus.DEFECT,  // Partially completed = defect (work not finished)
+  'בוצע חלקית': WorkStatus.DEFECT, // Partially completed = defect (work not finished)
   'לטיפול': WorkStatus.PENDING,
   'נדרש מעקב': WorkStatus.PENDING,
   'נדרש ביצוע': WorkStatus.PENDING,

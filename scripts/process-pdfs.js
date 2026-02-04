@@ -50,7 +50,8 @@ const hebrewStatusMap = {
   'בוצע - נמצאו אי תיאומים': 'DEFECT',
   'נמצאו אי תאומים': 'DEFECT',
   'נמצאו אי תיאומים': 'DEFECT',
-  'בוצע חלקי': 'IN_PROGRESS',
+  'בוצע חלקי': 'DEFECT',      // Partially completed = defect (work not finished)
+  'בוצע חלקית': 'DEFECT',     // Partially completed = defect (work not finished)
   'לטיפול': 'PENDING',
   'נדרש מעקב': 'PENDING',
   'נדרש ביצוע': 'PENDING',
@@ -194,12 +195,16 @@ const DEFECT_KEYWORDS = [
   'טעון',  // טעון תיקון, טעון בדיקה
 ];
 
-// Keywords that indicate partial/in-progress work
+// Keywords that indicate in-progress work (NOT partial - partial is a defect)
 const PARTIAL_KEYWORDS = [
-  'חלקי',
-  'חלקית',
   'בביצוע',
   'בטיפול',
+];
+
+// Add partial completion as a defect keyword
+const PARTIAL_DEFECT_KEYWORDS = [
+  'חלקי',
+  'חלקית',
 ];
 
 function normalizeStatus(hebrewStatus, notes = null, photoNotes = null) {
@@ -214,7 +219,15 @@ function normalizeStatus(hebrewStatus, notes = null, photoNotes = null) {
     }
   }
   
-  // SECOND: Check for partial/in-progress keywords
+  // SECOND: Check for partial completion keywords - these are DEFECTS (work not finished)
+  for (const keyword of PARTIAL_DEFECT_KEYWORDS) {
+    if (trimmed.includes(keyword.toLowerCase())) {
+      console.log(`Status "${hebrewStatus}" -> DEFECT (partial completion: "${keyword}")`);
+      return 'DEFECT';
+    }
+  }
+  
+  // THIRD: Check for in-progress keywords
   for (const keyword of PARTIAL_KEYWORDS) {
     if (trimmed.includes(keyword.toLowerCase())) {
       console.log(`Status "${hebrewStatus}" -> IN_PROGRESS (found keyword: "${keyword}")`);

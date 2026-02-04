@@ -1,0 +1,34 @@
+{
+  "categoryWeights": {
+    "ELECTRICAL": 15,
+    "PLUMBING": 11,
+    "SPRINKLERS": 5,
+    "WATERPROOFING": 6,
+    "DRYWALL": 8,
+    "FLOORING": 15,
+    "AC": 8,
+    "PAINTING": 12,
+    "KITCHEN": 5,
+    "OTHER": 15
+  },
+  "progressThresholds": {
+    "VERIFIED_NO_DEFECTS": 95,
+    "CATEGORY_GRADUATED": 90,
+    "ITEM_FIXED": 90,
+    "COMPLETED_OK_LATER": 75,
+    "COMPLETED_OK_FIRST": 50,
+    "HANDLED": 70,
+    "COMPLETED_WITH_ISSUES": 65,
+    "DEFECT_WORK_DONE": 55,
+    "IN_PROGRESS": 30,
+    "PENDING": 15,
+    "UNKNOWN": 15,
+    "NOT_STARTED": 5,
+    "CATEGORY_NEVER_SEEN": 0
+  },
+  "baselineProgress": 35,
+  "maxProgress": 95,
+  "defectPenalty": 3,
+  "defaultCategoryWeight": 10,
+  "lastUpdated": "2026-01-28T15:06:10.581Z"
+}

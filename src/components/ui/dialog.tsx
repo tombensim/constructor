@@ -117,4 +117,33 @@ const DialogClose = ({ onClick, className }: DialogCloseProps) => {
   );
 };
 
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose };
+interface DialogDescriptionProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const DialogDescription = ({ children, className }: DialogDescriptionProps) => {
+  return (
+    <p className={cn('text-sm text-muted-foreground', className)}>{children}</p>
+  );
+};
+
+interface DialogFooterProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const DialogFooter = ({ children, className }: DialogFooterProps) => {
+  return (
+    <div
+      className={cn(
+        'flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-2 p-4 border-t',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+};
+
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription, DialogFooter };

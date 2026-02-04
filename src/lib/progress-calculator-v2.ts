@@ -13,50 +13,40 @@
  * - VERIFIED: תקין, or positive verification in notes → counts toward progress
  * - DEFECT: ליקוי, לא תקין, or negative notes → reduces progress  
  * - INSPECTED: בוצע without verification → neutral (just checked, not verified)
+ * 
+ * NOTE: Configuration is now dynamic and can be modified via Admin page.
+ * Use getConfig() to get current settings.
  */
 
 import { WorkStatus, isPositiveStatus, isNegativeStatus, hasNegativeNotes } from './status-mapper';
+import { getConfig, DEFAULT_CONFIG, type ProgressConfig } from './progress-config';
 
 // Configuration
 export const PROGRESS_MODEL = process.env.PROGRESS_MODEL || 'v2';
 
-// Progress range
-const BASELINE_PROGRESS = 30;  // Start at 30% (pre-supervision work)
-const MAX_PROGRESS = 95;       // Max achievable progress
-const DEFECT_PENALTY = 5;      // Penalty per defect ratio point
+// Get dynamic configuration (with fallback to defaults)
+function getConfigSafe(): ProgressConfig {
+  try {
+    return getConfig();
+  } catch {
+    // Fallback for client-side or when config can't be loaded
+    return DEFAULT_CONFIG;
+  }
+}
 
-// Category weights
-export const CATEGORY_WEIGHTS: Record<string, number> = {
-  'ELECTRICAL': 12,
-  'PLUMBING': 10,
-  'SPRINKLERS': 5,
-  'WATERPROOFING': 5,
-  'DRYWALL': 10,
-  'FLOORING': 15,
-  'AC': 8,
-  'PAINTING': 10,
-  'KITCHEN': 10,
-  'OTHER': 15,
-};
+// Dynamic getters for configuration values
+export function getCategoryWeights(): Record<string, number> {
+  return getConfigSafe().categoryWeights;
+}
 
-export const STRUCTURAL_BASELINE = BASELINE_PROGRESS;
+export function getProgressThresholds() {
+  return getConfigSafe().progressThresholds;
+}
 
-// Progress thresholds matching user requirements
-export const PROGRESS_THRESHOLDS = {
-  VERIFIED_NO_DEFECTS: 90,       // תקין, verified with no issues
-  CATEGORY_GRADUATED: 90,        // Category was seen before, now absent = approved
-  ITEM_FIXED: 90,                // Item had defect, now disappeared = fixed
-  COMPLETED_OK_LATER: 75,        // בוצע - completed OK (seen in later reports)
-  COMPLETED_OK_FIRST: 50,        // בוצע - first time seen
-  HANDLED: 70,                   // טופל - defect was fixed
-  COMPLETED_WITH_ISSUES: 65,     // Completed but has issues in notes
-  DEFECT_WORK_DONE: 55,          // ליקוי - work done but has defect
-  IN_PROGRESS: 30,               // בטיפול - work in progress
-  PENDING: 15,                   // ממתין - pending
-  UNKNOWN: 15,                   // Unknown/unrecognized status
-  NOT_STARTED: 5,                // לא התחיל - not started
-  CATEGORY_NEVER_SEEN: 0,        // Category never reported = work not started
-};
+// Legacy exports for backward compatibility (use getters for dynamic values)
+export const CATEGORY_WEIGHTS: Record<string, number> = DEFAULT_CONFIG.categoryWeights;
+export const STRUCTURAL_BASELINE = DEFAULT_CONFIG.baselineProgress;
+export const PROGRESS_THRESHOLDS = DEFAULT_CONFIG.progressThresholds;
 
 // Types
 export type DefectScope = 'minor' | 'partial' | 'substantial' | 'full';
@@ -237,7 +227,7 @@ export function calculateCascadeImpact(cat: string, notes: string | null, prog: 
 }
 
 export function calculateProjectBaseline(prog: Map<string, number>): number {
-  return BASELINE_PROGRESS;
+  return getConfigSafe().baselineProgress;
 }
 
 /**
@@ -271,6 +261,10 @@ export function calculateItemProgressV2(
   const workStatus = status as WorkStatus;
   const hasIssuesInNotes = hasNegativeNotes(notes);
   const isFirstTime = context.isFirstTimeSeen !== false; // Default to first time if not specified
+  
+  // Get dynamic thresholds
+  const thresholds = getProgressThresholds();
+  
   let progress: number;
   let reason: string;
   
@@ -278,60 +272,60 @@ export function calculateItemProgressV2(
   if (workStatus === WorkStatus.COMPLETED_OK) {
     if (hasIssuesInNotes) {
       // Status says OK but notes indicate issues
-      progress = PROGRESS_THRESHOLDS.COMPLETED_WITH_ISSUES;
+      progress = thresholds.COMPLETED_WITH_ISSUES;
       reason = 'completed_ok_with_issues';
     } else {
-      progress = PROGRESS_THRESHOLDS.VERIFIED_NO_DEFECTS;
+      progress = thresholds.VERIFIED_NO_DEFECTS;
       reason = 'verified_no_defects';
     }
   }
   // 2. COMPLETED (בוצע) - work completed, check notes and timing
   else if (workStatus === WorkStatus.COMPLETED) {
     if (hasIssuesInNotes) {
-      progress = PROGRESS_THRESHOLDS.COMPLETED_WITH_ISSUES;
+      progress = thresholds.COMPLETED_WITH_ISSUES;
       reason = 'completed_with_issues';
     } else if (isVerified(notes)) {
       // Notes indicate verification (תקין in notes)
-      progress = PROGRESS_THRESHOLDS.VERIFIED_NO_DEFECTS;
+      progress = thresholds.VERIFIED_NO_DEFECTS;
       reason = 'verified_via_notes';
     } else if (isFirstTime) {
       // First time seeing this item - lower progress
-      progress = PROGRESS_THRESHOLDS.COMPLETED_OK_FIRST;
+      progress = thresholds.COMPLETED_OK_FIRST;
       reason = 'completed_ok_first_time';
     } else {
       // Seen before, still completed - higher progress
-      progress = PROGRESS_THRESHOLDS.COMPLETED_OK_LATER;
+      progress = thresholds.COMPLETED_OK_LATER;
       reason = 'completed_ok_later';
     }
   }
   // 3. HANDLED (טופל) - defect was fixed
   else if (workStatus === WorkStatus.HANDLED) {
-    progress = PROGRESS_THRESHOLDS.HANDLED;
+    progress = thresholds.HANDLED;
     reason = 'handled';
   }
   // 4. DEFECT or NOT_OK (ליקוי, לא תקין) - work done but has defect
   else if (workStatus === WorkStatus.DEFECT || workStatus === WorkStatus.NOT_OK) {
-    progress = PROGRESS_THRESHOLDS.DEFECT_WORK_DONE;
+    progress = thresholds.DEFECT_WORK_DONE;
     reason = 'defect_work_done';
   }
   // 5. IN_PROGRESS (בטיפול) - work in progress
   else if (workStatus === WorkStatus.IN_PROGRESS) {
-    progress = PROGRESS_THRESHOLDS.IN_PROGRESS;
+    progress = thresholds.IN_PROGRESS;
     reason = 'in_progress';
   }
   // 6. PENDING (ממתין) - pending
   else if (workStatus === WorkStatus.PENDING) {
-    progress = PROGRESS_THRESHOLDS.PENDING;
+    progress = thresholds.PENDING;
     reason = 'pending';
   }
   // 7. NOT_STARTED (לא התחיל)
   else if (workStatus === WorkStatus.NOT_STARTED) {
-    progress = PROGRESS_THRESHOLDS.NOT_STARTED;
+    progress = thresholds.NOT_STARTED;
     reason = 'not_started';
   }
   // 8. Unknown/unrecognized status
   else {
-    progress = PROGRESS_THRESHOLDS.UNKNOWN;
+    progress = thresholds.UNKNOWN;
     reason = 'unknown_status';
   }
   
@@ -378,6 +372,9 @@ export function calculateCategoryProgress(
     return { progress: 0, hasRegression: false, itemCount: 0, verifiedCount: 0, defectCount: 0 };
   }
   
+  // Get dynamic thresholds
+  const thresholds = getProgressThresholds();
+  
   let totalProgress = 0;
   let verifiedCount = 0;
   let defectCount = 0;
@@ -388,7 +385,7 @@ export function calculateCategoryProgress(
     totalProgress += itemResult.progress;
     
     // Count verified and defect items for stats
-    if (itemResult.progress >= PROGRESS_THRESHOLDS.VERIFIED_NO_DEFECTS) {
+    if (itemResult.progress >= thresholds.VERIFIED_NO_DEFECTS) {
       verifiedCount++;
     }
     if (hasDefect(item.status, item.notes)) {
@@ -442,12 +439,16 @@ export function calculateOverallProgress(
 ): number {
   if (categoryProgress.size === 0) return 0;
   
+  // Get dynamic weights
+  const weights = getCategoryWeights();
+  const config = getConfigSafe();
+  
   // Use weighted average based on category importance
   let weightedSum = 0;
   let totalWeight = 0;
   
   for (const [category, progress] of Array.from(categoryProgress.entries())) {
-    const weight = CATEGORY_WEIGHTS[category] || 10;
+    const weight = weights[category] || config.defaultCategoryWeight;
     weightedSum += progress * weight;
     totalWeight += weight;
   }
@@ -476,12 +477,17 @@ export function calculateOverallProgressWithAllCategories(
   // If no categories ever seen, return 0
   if (categoriesEverSeen.size === 0) return 0;
   
+  // Get dynamic weights and thresholds
+  const weights = getCategoryWeights();
+  const thresholds = getProgressThresholds();
+  const config = getConfigSafe();
+  
   let weightedSum = 0;
   let totalWeight = 0;
   
   // Only consider categories that have EVER been seen for this apartment
   for (const category of Array.from(categoriesEverSeen)) {
-    const weight = CATEGORY_WEIGHTS[category] || 10;
+    const weight = weights[category] || config.defaultCategoryWeight;
     totalWeight += weight;
     
     if (currentCategoryProgress.has(category)) {
@@ -489,7 +495,7 @@ export function calculateOverallProgressWithAllCategories(
       weightedSum += (currentCategoryProgress.get(category) || 0) * weight;
     } else {
       // Category was seen before but has no items now = all items graduated/verified
-      weightedSum += PROGRESS_THRESHOLDS.CATEGORY_GRADUATED * weight;
+      weightedSum += thresholds.CATEGORY_GRADUATED * weight;
     }
   }
   
@@ -513,6 +519,10 @@ export function calculateDetailedProgress(
   items: WorkItemForProgress[]
 ): CategoryProgressDetail[] {
   const details: CategoryProgressDetail[] = [];
+  
+  // Get dynamic weights
+  const weights = getCategoryWeights();
+  const config = getConfigSafe();
   
   // Group items by category
   const itemsByCategory = new Map<string, WorkItemForProgress[]>();
@@ -541,7 +551,7 @@ export function calculateDetailedProgress(
       hasIssues: issues.length > 0,
       hasRegression: false,
       issues,
-      weight: CATEGORY_WEIGHTS[category] || 10,
+      weight: weights[category] || config.defaultCategoryWeight,
     });
   }
   

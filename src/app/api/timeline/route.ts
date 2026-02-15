@@ -6,7 +6,6 @@ import {
   calculateOverallProgressWithAllCategories,
   CATEGORY_HEBREW_NAMES,
   CATEGORY_WEIGHTS,
-  STANDARD_APARTMENT_CATEGORIES,
   PROGRESS_THRESHOLDS,
 } from '@/lib/progress-calculator';
 
@@ -71,12 +70,12 @@ export async function GET() {
 
     for (let reportIndex = 0; reportIndex < reports.length; reportIndex++) {
       const report = reports[reportIndex];
-      
+
       // Track which items are in THIS report (for "disappeared" detection)
       const itemsInThisReport = new Set<string>();
       const aptItemsInThisReport = new Map<string, Set<string>>();
       const devItemsInThisReport = new Set<string>();
-      
+
       for (const apt of apartments) {
         aptItemsInThisReport.set(apt.id, new Set());
       }
@@ -86,9 +85,9 @@ export async function GET() {
         const key = `${item.category}|${item.description}`;
         itemsInThisReport.add(key);
         projectCategoriesEverSeen.add(item.category);
-        
+
         const isDefect = isNegativeStatus(item.status as WorkStatus) || hasNegativeNotes(item.notes);
-        
+
         // Update project-level history
         const existingProject = projectItemHistory.get(key);
         if (existingProject) {
@@ -106,16 +105,16 @@ export async function GET() {
             hadDefect: isDefect,
           });
         }
-        
+
         if (item.apartmentId) {
           const aptHistory = apartmentItemHistory.get(item.apartmentId);
           const aptCatsSeen = apartmentCategoriesEverSeen.get(item.apartmentId);
           const aptItems = aptItemsInThisReport.get(item.apartmentId);
-          
+
           if (aptHistory && aptCatsSeen && aptItems) {
             aptItems.add(key);
             aptCatsSeen.add(item.category);
-            
+
             const existing = aptHistory.get(key);
             if (existing) {
               existing.status = item.status;
@@ -136,7 +135,7 @@ export async function GET() {
         } else {
           devItemsInThisReport.add(key);
           devCategoriesEverSeen.add(item.category);
-          
+
           const existing = devItemHistory.get(key);
           if (existing) {
             existing.status = item.status;
@@ -163,30 +162,30 @@ export async function GET() {
         const aptHistory = apartmentItemHistory.get(apt.id);
         const aptCatsSeen = apartmentCategoriesEverSeen.get(apt.id);
         const aptItemsNow = aptItemsInThisReport.get(apt.id);
-        
+
         if (!aptHistory || !aptCatsSeen || !aptItemsNow) {
           apartmentProgressMap[apt.number] = { progress: 0, issues: 0, categoryProgress: {} };
           continue;
         }
-        
+
         if (aptHistory.size === 0) {
           apartmentProgressMap[apt.number] = { progress: 0, issues: 0, categoryProgress: {} };
           continue;
         }
-        
+
         // Calculate progress for each category
         const catProgress = new Map<string, number>();
         const catItems = new Map<string, Array<{ progress: number; isIssue: boolean }>>();
         let totalIssues = 0;
-        
+
         // Group items by category
         for (const [itemKey, history] of Array.from(aptHistory.entries())) {
           const isInCurrentReport = aptItemsNow.has(itemKey);
           const isFirstTime = history.firstSeenReportIndex === reportIndex;
-          
+
           let itemProgress: number;
           let isIssue = false;
-          
+
           if (isInCurrentReport) {
             // Item is in current report - calculate based on status
             const result = calculateItemProgressV2(history.status, history.notes, {
@@ -199,23 +198,23 @@ export async function GET() {
             itemProgress = PROGRESS_THRESHOLDS.ITEM_FIXED;
             isIssue = false;
           }
-          
+
           if (isIssue) totalIssues++;
-          
+
           const existing = catItems.get(history.category) || [];
           existing.push({ progress: itemProgress, isIssue });
           catItems.set(history.category, existing);
         }
-        
+
         // Calculate average progress per category
         for (const [cat, items] of Array.from(catItems.entries())) {
           const avgProgress = Math.round(items.reduce((sum, i) => sum + i.progress, 0) / items.length);
           catProgress.set(cat, avgProgress);
         }
-        
+
         // Calculate overall progress considering ALL categories
         const overallProgress = calculateOverallProgressWithAllCategories(catProgress, aptCatsSeen);
-        
+
         apartmentProgressMap[apt.number] = {
           progress: overallProgress,
           issues: totalIssues,
@@ -228,14 +227,14 @@ export async function GET() {
         const catProgress = new Map<string, number>();
         const catItems = new Map<string, Array<{ progress: number; isIssue: boolean }>>();
         let totalIssues = 0;
-        
+
         for (const [itemKey, history] of Array.from(devItemHistory.entries())) {
           const isInCurrentReport = devItemsInThisReport.has(itemKey);
           const isFirstTime = history.firstSeenReportIndex === reportIndex;
-          
+
           let itemProgress: number;
           let isIssue = false;
-          
+
           if (isInCurrentReport) {
             const result = calculateItemProgressV2(history.status, history.notes, {
               isFirstTimeSeen: isFirstTime,
@@ -246,19 +245,19 @@ export async function GET() {
             itemProgress = PROGRESS_THRESHOLDS.ITEM_FIXED;
             isIssue = false;
           }
-          
+
           if (isIssue) totalIssues++;
-          
+
           const existing = catItems.get(history.category) || [];
           existing.push({ progress: itemProgress, isIssue });
           catItems.set(history.category, existing);
         }
-        
+
         for (const [cat, items] of Array.from(catItems.entries())) {
           const avgProgress = Math.round(items.reduce((sum, i) => sum + i.progress, 0) / items.length);
           catProgress.set(cat, avgProgress);
         }
-        
+
         const overallProgress = calculateOverallProgressWithAllCategories(catProgress, devCategoriesEverSeen);
         apartmentProgressMap['פיתוח'] = {
           progress: overallProgress,
@@ -273,14 +272,14 @@ export async function GET() {
       const projectCatProgress = new Map<string, number>();
       const projectCatItems = new Map<string, Array<{ progress: number; isIssue: boolean }>>();
       let projectTotalIssues = 0;
-      
+
       for (const [itemKey, history] of Array.from(projectItemHistory.entries())) {
         const isInCurrentReport = itemsInThisReport.has(itemKey);
         const isFirstTime = history.firstSeenReportIndex === reportIndex;
-        
+
         let itemProgress: number;
         let isIssue = false;
-        
+
         if (isInCurrentReport) {
           const result = calculateItemProgressV2(history.status, history.notes, {
             isFirstTimeSeen: isFirstTime,
@@ -291,19 +290,19 @@ export async function GET() {
           itemProgress = PROGRESS_THRESHOLDS.ITEM_FIXED;
           isIssue = false;
         }
-        
+
         if (isIssue) projectTotalIssues++;
-        
+
         const existing = projectCatItems.get(history.category) || [];
         existing.push({ progress: itemProgress, isIssue });
         projectCatItems.set(history.category, existing);
       }
-      
+
       for (const [cat, items] of Array.from(projectCatItems.entries())) {
         const avgProgress = Math.round(items.reduce((sum, i) => sum + i.progress, 0) / items.length);
         projectCatProgress.set(cat, avgProgress);
       }
-      
+
       const overallProgress = calculateOverallProgressWithAllCategories(projectCatProgress, projectCategoriesEverSeen);
 
       timelineData.push({

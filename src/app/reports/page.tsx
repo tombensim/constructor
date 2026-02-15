@@ -31,7 +31,6 @@ import {
   Download,
   Upload,
   Loader2,
-  X,
   Trash2,
   History,
   RotateCcw,
@@ -84,11 +83,11 @@ export default function ReportsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<ReportData | null>(null);
   const [deleting, setDeleting] = useState(false);
-  
+
   // Validation confirmation state
   const [validationConfirmOpen, setValidationConfirmOpen] = useState(false);
   const [pendingValidation, setPendingValidation] = useState<ValidationConfirmation | null>(null);
-  
+
   // Rollback/Snapshot state
   const [rollbackDialogOpen, setRollbackDialogOpen] = useState(false);
   const [snapshots, setSnapshots] = useState<SnapshotData[]>([]);
@@ -171,7 +170,7 @@ export default function ReportsPage() {
   const handleFilesUpload = async (files: File[], forceAll: boolean = false) => {
     // Filter PDF files only
     const pdfFiles = files.filter(file => file.name.toLowerCase().endsWith('.pdf'));
-    
+
     if (pdfFiles.length === 0) {
       setUploadProgress({
         current: 0,
@@ -194,7 +193,7 @@ export default function ReportsPage() {
 
     for (let i = 0; i < pdfFiles.length; i++) {
       const file = pdfFiles[i];
-      
+
       setUploadProgress(prev => prev ? {
         ...prev,
         current: i,
@@ -213,7 +212,7 @@ export default function ReportsPage() {
             confidence: result.confidence || 'low',
           });
           setValidationConfirmOpen(true);
-          
+
           // Store remaining files for later
           const remainingFiles = pdfFiles.slice(i + 1);
           if (remainingFiles.length > 0) {
@@ -266,7 +265,7 @@ export default function ReportsPage() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFilesUpload(Array.from(e.dataTransfer.files));
     }
@@ -296,10 +295,10 @@ export default function ReportsPage() {
 
     setValidationConfirmOpen(false);
     setUploading(true);
-    
+
     try {
       const result = await uploadSingleFile(pendingValidation.file, true);
-      
+
       setUploadProgress(prev => prev ? {
         ...prev,
         current: (prev.current || 0) + 1,
@@ -451,8 +450,8 @@ export default function ReportsPage() {
           <Badge variant="outline" className="text-sm">
             {reports.length} דוחות
           </Badge>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleOpenRollback}
             title="שחזור מגיבוי"
           >
@@ -589,19 +588,19 @@ export default function ReportsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={
-                        report.progressDelta > 0 
-                          ? "bg-green-50 text-green-700" 
-                          : report.progressDelta < 0 
+                        (report.progressDelta ?? 0) > 0
+                          ? "bg-green-50 text-green-700"
+                          : (report.progressDelta ?? 0) < 0
                             ? "bg-red-50 text-red-700"
                             : "bg-orange-50 text-orange-600"
                       }
                     >
-                      {report.progressDelta > 0 
-                        ? `+${report.progressDelta}%` 
-                        : report.progressDelta < 0 
+                      {(report.progressDelta ?? 0) > 0
+                        ? `+${report.progressDelta}%`
+                        : (report.progressDelta ?? 0) < 0
                           ? `${report.progressDelta}%`
                           : "Zero"}
                     </Badge>
@@ -730,7 +729,7 @@ export default function ReportsPage() {
               העלאת דוחות
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {/* Drag and Drop Zone */}
             <div
@@ -754,7 +753,7 @@ export default function ReportsPage() {
                 onChange={handleFileInput}
                 disabled={uploading}
               />
-              
+
               {uploading && uploadProgress ? (
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -764,8 +763,8 @@ export default function ReportsPage() {
                   <p className="text-xs text-muted-foreground truncate max-w-full">
                     {uploadProgress.currentFile}
                   </p>
-                  <Progress 
-                    value={(uploadProgress.current / uploadProgress.total) * 100} 
+                  <Progress
+                    value={(uploadProgress.current / uploadProgress.total) * 100}
                     className="h-2 w-full max-w-xs"
                   />
                 </div>
@@ -787,9 +786,8 @@ export default function ReportsPage() {
                 {uploadProgress.results.map((result, index) => (
                   <div
                     key={index}
-                    className={`flex items-center gap-2 p-2 rounded-lg text-sm ${
-                      result.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                    }`}
+                    className={`flex items-center gap-2 p-2 rounded-lg text-sm ${result.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                      }`}
                   >
                     {result.success ? (
                       <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
@@ -851,12 +849,12 @@ export default function ReportsPage() {
               מחיקת דוח
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <p className="text-sm">
               האם אתה בטוח שברצונך למחוק את הדוח הבא?
             </p>
-            
+
             {reportToDelete && (
               <div className="p-3 rounded-lg bg-muted">
                 <p className="font-medium">
@@ -918,14 +916,14 @@ export default function ReportsPage() {
               נמצאו אזהרות באימות הקובץ
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {pendingValidation && (
               <>
                 <p className="text-sm">
                   הקובץ <span className="font-medium">{pendingValidation.file.name}</span> עבר אימות בסיסי, אך נמצאו האזהרות הבאות:
                 </p>
-                
+
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {pendingValidation.warnings.map((warning, index) => (
                     <div
@@ -942,8 +940,8 @@ export default function ReportsPage() {
                   <p className="text-sm">
                     <span className="font-medium">רמת ביטחון: </span>
                     <Badge variant={pendingValidation.confidence === 'low' ? 'destructive' : 'outline'}>
-                      {pendingValidation.confidence === 'high' ? 'גבוהה' : 
-                       pendingValidation.confidence === 'medium' ? 'בינונית' : 'נמוכה'}
+                      {pendingValidation.confidence === 'high' ? 'גבוהה' :
+                        pendingValidation.confidence === 'medium' ? 'בינונית' : 'נמוכה'}
                     </Badge>
                   </p>
                 </div>
@@ -987,7 +985,7 @@ export default function ReportsPage() {
               שחזור מגיבוי
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             <p className="text-sm text-muted-foreground">
               בחר נקודת גיבוי לשחזור. גיבויים נוצרים אוטומטית לפני כל העלאת דוח.

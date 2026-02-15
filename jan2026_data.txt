@@ -1,0 +1,66 @@
+
+Date: 2026-01-11 00:00:00
+ID: cml6t2uiq001px8lvs0ia9l39
+  Category: ELECTRICAL
+  Status: DEFECT
+  Desc: בדיקת תוכנית חשמל על פי תוכנית שינויי דיירים לביצוע חתומה ע"י הדייר
+
+Date: 2026-01-11 00:00:00
+ID: cml6t2uj1001rx8lvkonveqgc
+  Category: FLOORING
+  Status: DEFECT
+  Desc: ביצוע עבודות ריצוף בשטח הדירה, ביצוע פוגה של 3 מ"מ
+
+Date: 2026-01-11 00:00:00
+ID: cml6t2ujj001vx8lv7vk1sfcj
+  Category: FLOORING
+  Status: DEFECT
+  Desc: ביצוע בדיקת שיפועים לכיוון הניקוז, בביצוע הבדיקה התקבל שיפוע בין 4%-1% כנדרש על פי התקנות
+
+Date: 2026-01-11 00:00:00
+ID: cml6t2uja001tx8lvkx3y3ewu
+  Category: OTHER
+  Status: COMPLETED
+  Desc: ביצוע התקנת דלת כניסה הנושאת תו תקן ישראלי כנדרש ובהתאמה למפרט הטכני
+
+Date: 2026-01-11 00:00:00
+ID: cml6t2ujt001xx8lveqe13x4y
+  Category: OTHER
+  Status: COMPLETED
+  Desc: ביצוע התקנת אסלות
+
+Date: 2026-01-30 00:00:00
+ID: cml6t56ae0051x8lvmwpw5hgl
+  Category: ELECTRICAL
+  Status: DEFECT
+  Desc: בדיקת תוכנית חשמל על פי תוכנית שינויי דיירים לביצוע חתומה ע"י הדייר
+
+Date: 2026-01-30 00:00:00
+ID: cml6t56am0053x8lvk3g0iu6s
+  Category: FLOORING
+  Status: DEFECT
+  Desc: ביצוע עבודות ריצוף בשטח הדירה, ביצוע פוגה של 3 מ"מ
+
+Date: 2026-01-30 00:00:00
+ID: cml6t56au0055x8lvsrj3dt1g
+  Category: FLOORING
+  Status: DEFECT
+  Desc: ביצוע בדיקת שיפועים לכיוון הניקוז, בביצוע הבדיקה התקבל שיפוע בין 1%-4% כנדרש על פי התקנות
+
+Date: 2026-01-30 00:00:00
+ID: cml6t56b40057x8lvyqzromnf
+  Category: FLOORING
+  Status: DEFECT
+  Desc: יש לחרוץ חומר קשיח ולבצע מילוי מישקי הפרדה בעזרת חומר איטום \גמיש על פי התקן
+
+Date: 2026-01-30 00:00:00
+ID: cml6t56bb0059x8lv0ljndwdp
+  Category: FLOORING
+  Status: DEFECT
+  Desc: העברת כבל חשמל בצורה לקויה יש לשבור את הריצוף ולבטן כמו כנדרש
+
+Date: 2026-01-30 00:00:00
+ID: cml6t56bi005bx8lvej4re6ab
+  Category: PAINTING
+  Status: DEFECT
+  Desc: ביצוע רובה בצבע לא תקין

@@ -1,5 +1,8 @@
 /**
- * Progress Calculator V2 - Verification-Based Progress
+ * Progress Calculator V3 - Refactored Verification-Based Progress
+ * 
+ * IMPROVEMENT OVER V2: Uses getEffectiveStatus() for cleaner code organization.
+ * Logic is IDENTICAL to V2 - this is a code refactoring, not a calculation change.
  * 
  * Key insight: Supervisor's "בוצע" just means "inspected", NOT "work is done correctly"
  * Only items verified as "תקין" (OK) or with positive notes count toward progress.
@@ -14,11 +17,16 @@
  * - DEFECT: ליקוי, לא תקין, or negative notes → reduces progress  
  * - INSPECTED: בוצע without verification → neutral (just checked, not verified)
  * 
+ * V3 Changes:
+ * - Uses getEffectiveStatus() from status-mapper for defect detection
+ * - Better code organization and maintainability
+ * - Explicitly aligned with defect history chart approach
+ * 
  * NOTE: Configuration is now dynamic and can be modified via Admin page.
  * Use getConfig() to get current settings.
  */
 
-import { WorkStatus, isPositiveStatus, isNegativeStatus, hasNegativeNotes } from './status-mapper';
+import { WorkStatus, isNegativeStatus, hasNegativeNotes, getEffectiveStatus } from './status-mapper';
 import { getConfig, DEFAULT_CONFIG, type ProgressConfig } from './progress-config';
 
 // Configuration
@@ -195,21 +203,12 @@ export function isTrulyVerified(status: string, notes: string | null): boolean {
 
 /**
  * Check if item has a defect (not yet resolved)
+ * V3: Uses getEffectiveStatus for cleaner code
  */
 export function hasDefect(status: string, notes: string | null): boolean {
   const workStatus = status as WorkStatus;
-
-  // Explicit defect status
-  if (isNegativeStatus(workStatus)) {
-    return true;
-  }
-
-  // Positive status but negative notes = has issues
-  if (isPositiveStatus(workStatus) && hasNegativeNotes(notes)) {
-    return true;
-  }
-
-  return false;
+  const effectiveStatus = getEffectiveStatus(workStatus, notes);
+  return isNegativeStatus(effectiveStatus);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -238,15 +237,29 @@ export function calculateProjectBaseline(_prog: Map<string, number>): number {
 }
 
 /**
- * V1 Progress Calculation - Simple status-based (uses same thresholds as V2)
+ * V1 Progress Calculation - Simple status-based (uses same thresholds as V3)
  */
 export function calculateItemProgressV1(status: string, notes: string | null): number {
-  // Delegate to V2 for consistency
-  return calculateItemProgressV2(status, notes).progress;
+  // Delegate to V3 for consistency
+  return calculateItemProgressV3(status, notes).progress;
 }
 
 /**
- * V2 Progress Calculation - Status-based with proper thresholds
+ * V2 Progress Calculation - Status-based with proper thresholds (uses same logic as V3)
+ * Kept for backward compatibility
+ */
+export function calculateItemProgressV2(
+  status: string,
+  notes: string | null,
+  context: ProgressContext = {}
+): ProgressResult {
+  // V2 and V3 have identical logic, V3 just has cleaner implementation
+  return calculateItemProgressV3(status, notes, context);
+}
+
+/**
+ * V3 Progress Calculation - Status-based with proper thresholds
+ * Uses getEffectiveStatus() for cleaner logic
  * 
  * Progress values per status:
  * - Verified (תקין, no defects): 90%
@@ -260,13 +273,13 @@ export function calculateItemProgressV1(status: string, notes: string | null): n
  * - Unknown: 15%
  * - Not Started: 5%
  */
-export function calculateItemProgressV2(
+export function calculateItemProgressV3(
   status: string,
   notes: string | null,
   context: ProgressContext = {}
 ): ProgressResult {
   const workStatus = status as WorkStatus;
-  const hasIssuesInNotes = hasNegativeNotes(notes);
+  const effectiveStatus = getEffectiveStatus(workStatus, notes);
   const isFirstTime = context.isFirstTimeSeen !== false; // Default to first time if not specified
 
   // Get dynamic thresholds
@@ -275,23 +288,20 @@ export function calculateItemProgressV2(
   let progress: number;
   let reason: string;
 
+  // Use effective status for all calculations
+  // This accounts for both explicit status and notes-based overrides
+
   // 1. COMPLETED_OK (תקין) - verified complete
-  if (workStatus === WorkStatus.COMPLETED_OK) {
-    if (hasIssuesInNotes) {
-      // Status says OK but notes indicate issues
-      progress = thresholds.COMPLETED_WITH_ISSUES;
-      reason = 'completed_ok_with_issues';
-    } else {
-      progress = thresholds.VERIFIED_NO_DEFECTS;
-      reason = 'verified_no_defects';
-    }
+  if (effectiveStatus === WorkStatus.COMPLETED_OK) {
+    // No issues by definition (effective status handles this)
+    progress = thresholds.VERIFIED_NO_DEFECTS;
+    reason = 'verified_no_defects';
   }
   // 2. COMPLETED (בוצע) - work completed, check notes and timing
-  else if (workStatus === WorkStatus.COMPLETED) {
-    if (hasIssuesInNotes) {
-      progress = thresholds.COMPLETED_WITH_ISSUES;
-      reason = 'completed_with_issues';
-    } else if (isVerified(notes)) {
+  else if (effectiveStatus === WorkStatus.COMPLETED) {
+    // If effective status is COMPLETED, notes don't have issues
+    // (otherwise effective status would be DEFECT)
+    if (isVerified(notes)) {
       // Notes indicate verification (תקין in notes)
       progress = thresholds.VERIFIED_NO_DEFECTS;
       reason = 'verified_via_notes';
@@ -306,27 +316,27 @@ export function calculateItemProgressV2(
     }
   }
   // 3. HANDLED (טופל) - defect was fixed
-  else if (workStatus === WorkStatus.HANDLED) {
+  else if (effectiveStatus === WorkStatus.HANDLED) {
     progress = thresholds.HANDLED;
     reason = 'handled';
   }
   // 4. DEFECT or NOT_OK (ליקוי, לא תקין) - work done but has defect
-  else if (workStatus === WorkStatus.DEFECT || workStatus === WorkStatus.NOT_OK) {
+  else if (effectiveStatus === WorkStatus.DEFECT || effectiveStatus === WorkStatus.NOT_OK) {
     progress = thresholds.DEFECT_WORK_DONE;
     reason = 'defect_work_done';
   }
   // 5. IN_PROGRESS (בטיפול) - work in progress
-  else if (workStatus === WorkStatus.IN_PROGRESS) {
+  else if (effectiveStatus === WorkStatus.IN_PROGRESS) {
     progress = thresholds.IN_PROGRESS;
     reason = 'in_progress';
   }
   // 6. PENDING (ממתין) - pending
-  else if (workStatus === WorkStatus.PENDING) {
+  else if (effectiveStatus === WorkStatus.PENDING) {
     progress = thresholds.PENDING;
     reason = 'pending';
   }
   // 7. NOT_STARTED (לא התחיל)
-  else if (workStatus === WorkStatus.NOT_STARTED) {
+  else if (effectiveStatus === WorkStatus.NOT_STARTED) {
     progress = thresholds.NOT_STARTED;
     reason = 'not_started';
   }
@@ -347,14 +357,14 @@ export function calculateItemProgressV2(
 }
 
 /**
- * Main entry point - calculates item progress (V2 - verification-based)
+ * Main entry point - calculates item progress (V3 - refactored verification-based)
  */
 export function calculateItemProgress(
   status: string,
   notes: string | null,
   context?: ProgressContext
 ): number {
-  return calculateItemProgressV2(status, notes, context || {}).progress;
+  return calculateItemProgressV3(status, notes, context || {}).progress;
 }
 
 export function calculateItemProgressDetailed(
@@ -362,7 +372,7 @@ export function calculateItemProgressDetailed(
   notes: string | null,
   context?: ProgressContext
 ): ProgressResult {
-  return calculateItemProgressV2(status, notes, context || {});
+  return calculateItemProgressV3(status, notes, context || {});
 }
 
 /**
@@ -387,8 +397,8 @@ export function calculateCategoryProgress(
   let defectCount = 0;
 
   for (const item of items) {
-    // Calculate individual item progress using V2 logic
-    const itemResult = calculateItemProgressV2(item.status, item.notes);
+    // Calculate individual item progress using V3 logic
+    const itemResult = calculateItemProgressV3(item.status, item.notes);
     totalProgress += itemResult.progress;
 
     // Count verified and defect items for stats

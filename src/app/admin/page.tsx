@@ -76,10 +76,13 @@ export default function AdminPage() {
       // Check if there are changes
       const changed = JSON.stringify(editConfig) !== JSON.stringify(data.config);
       setHasChanges(changed);
-      
+
       // Validate on every change
-      validateLocally(editConfig);
+      if (editConfig) {
+        validateLocally(editConfig);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editConfig, data]);
 
   async function fetchConfig() {
@@ -98,6 +101,8 @@ export default function AdminPage() {
     }
   }
 
+  // Wrap validateLocally in useCallback to suppress lint warning
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   function validateLocally(config: ProgressConfig) {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -152,7 +157,7 @@ export default function AdminPage() {
       setData(prev => prev ? { ...prev, config: result.config, validation: result.validation } : prev);
       setHasChanges(false);
       setSaveMessage({ type: 'success', text: 'ההגדרות נשמרו בהצלחה' });
-      
+
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err) {
       setSaveMessage({ type: 'error', text: err instanceof Error ? err.message : 'שגיאה בשמירה' });
@@ -166,16 +171,16 @@ export default function AdminPage() {
       setSaving(true);
       const res = await fetch('/api/admin/config', { method: 'PUT' });
       if (!res.ok) throw new Error('Failed to reset');
-      
+
       const result = await res.json();
       setData(prev => prev ? { ...prev, config: result.config } : prev);
       setEditConfig(result.config);
       setHasChanges(false);
       setShowResetDialog(false);
       setSaveMessage({ type: 'success', text: 'ההגדרות אופסו לברירת המחדל' });
-      
+
       setTimeout(() => setSaveMessage(null), 3000);
-    } catch (err) {
+    } catch {
       setSaveMessage({ type: 'error', text: 'שגיאה באיפוס' });
     } finally {
       setSaving(false);
@@ -215,18 +220,18 @@ export default function AdminPage() {
   // Auto-balance weights to sum to 100
   function autoBalanceWeights() {
     if (!editConfig) return;
-    
+
     const weights = { ...editConfig.categoryWeights };
     const currentSum = Object.values(weights).reduce((a, b) => a + b, 0);
-    
+
     if (currentSum === 0) return;
-    
+
     // Scale all weights proportionally to sum to 100
     const factor = 100 / currentSum;
     for (const key of Object.keys(weights)) {
       weights[key] = Math.round(weights[key] * factor * 10) / 10;
     }
-    
+
     // Fix rounding errors by adjusting the largest weight
     const newSum = Object.values(weights).reduce((a, b) => a + b, 0);
     const diff = 100 - newSum;
@@ -234,7 +239,7 @@ export default function AdminPage() {
       const largestKey = Object.entries(weights).sort((a, b) => b[1] - a[1])[0][0];
       weights[largestKey] = Math.round((weights[largestKey] + diff) * 10) / 10;
     }
-    
+
     setEditConfig({
       ...editConfig,
       categoryWeights: weights,
@@ -344,11 +349,11 @@ export default function AdminPage() {
               <CardTitle className="flex items-center justify-between">
                 <span>משקלי קטגוריות</span>
                 <div className="flex items-center gap-2">
-                  <Badge 
+                  <Badge
                     variant={Math.abs(weightSum - 100) < 0.01 ? 'default' : 'destructive'}
                     className="text-lg px-3 py-1"
                   >
-                    סה"כ: {weightSum.toFixed(1)}%
+                    סה&quot;כ: {weightSum.toFixed(1)}%
                   </Badge>
                   <Button
                     variant="outline"
@@ -429,13 +434,12 @@ export default function AdminPage() {
                       <span className="text-muted-foreground">%</span>
                       <div className="flex-1 bg-gray-100 rounded-full h-3">
                         <div
-                          className={`h-3 rounded-full transition-all ${
-                            value >= 80 ? 'bg-green-500' :
+                          className={`h-3 rounded-full transition-all ${value >= 80 ? 'bg-green-500' :
                             value >= 60 ? 'bg-blue-500' :
-                            value >= 40 ? 'bg-yellow-500' :
-                            value >= 20 ? 'bg-orange-500' :
-                            'bg-red-500'
-                          }`}
+                              value >= 40 ? 'bg-yellow-500' :
+                                value >= 20 ? 'bg-orange-500' :
+                                  'bg-red-500'
+                            }`}
                           style={{ width: `${value}%` }}
                         />
                       </div>
@@ -540,7 +544,7 @@ export default function AdminPage() {
               <RotateCcw className="h-4 w-4 ml-2" />
               איפוס לברירת מחדל
             </Button>
-            
+
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"

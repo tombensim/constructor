@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DefectHistoryChart } from '@/components/charts/DefectHistoryChart';
 import {
   Table,
   TableBody,
@@ -33,16 +34,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Brush,
-} from 'recharts';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -58,7 +49,6 @@ import {
   WorkStatus,
   isPositiveStatus,
   isNegativeStatus,
-  hasNegativeNotes,
   CATEGORY_DISPLAY_ORDER,
 } from '@/lib/status-mapper';
 
@@ -81,20 +71,6 @@ function sortCategoryEntries<T>(entries: [string, T][]): [string, T][] {
     const orderB = indexB === -1 ? CATEGORY_DISPLAY_ORDER.length - 1 : indexB;
     return orderA - orderB;
   });
-}
-
-// Deduplicate timeline data by date, keeping only the last entry for each unique date
-function deduplicateByDate<T extends { date: string }>(data: T[]): T[] {
-  const dateMap = new Map<string, T>();
-  for (const item of data) {
-    // Extract just the date part (YYYY-MM-DD) to handle timezone differences
-    const dateKey = item.date.split('T')[0];
-    dateMap.set(dateKey, item);
-  }
-  // Return sorted by date
-  return Array.from(dateMap.values()).sort((a, b) => 
-    new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
 }
 
 interface WorkItem {
@@ -148,6 +124,10 @@ interface ApartmentDetail {
     issues: number;
     itemCount: number;
   }[];
+  defectHistoryByCategory?: {
+    date: string;
+    categoryDefects: Record<string, number>;
+  }[];
   allReports: {
     reportId: string;
     reportDate: string;
@@ -172,12 +152,12 @@ export default function ApartmentDetailPage() {
   const [allApartments, setAllApartments] = useState<ApartmentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Dialog states - cumulative (all reports)
   const [cumCompletedDialogOpen, setCumCompletedDialogOpen] = useState(false);
   const [cumDefectsDialogOpen, setCumDefectsDialogOpen] = useState(false);
   const [cumInProgressDialogOpen, setCumInProgressDialogOpen] = useState(false);
-  
+
   // Dialog states - latest report
   const [latestCompletedDialogOpen, setLatestCompletedDialogOpen] = useState(false);
   const [latestDefectsDialogOpen, setLatestDefectsDialogOpen] = useState(false);
@@ -239,7 +219,7 @@ export default function ApartmentDetailPage() {
     );
   }
 
-  const { apartment, cumulative, latestReport, categoryGroups, progressHistory, detailedProgress } = data;
+  const { apartment, cumulative, latestReport, categoryGroups } = data;
 
   return (
     <div className="space-y-6">
@@ -300,7 +280,7 @@ export default function ApartmentDetailPage() {
                 </Card>
 
                 {/* Completed Card */}
-                <Card 
+                <Card
                   className="cursor-pointer hover:bg-green-100 transition-colors bg-green-50"
                   onClick={() => setCumCompletedDialogOpen(true)}
                 >
@@ -316,7 +296,7 @@ export default function ApartmentDetailPage() {
                 </Card>
 
                 {/* Defects Card */}
-                <Card 
+                <Card
                   className="cursor-pointer hover:bg-orange-100 transition-colors bg-orange-50"
                   onClick={() => setCumDefectsDialogOpen(true)}
                 >
@@ -332,7 +312,7 @@ export default function ApartmentDetailPage() {
                 </Card>
 
                 {/* In Progress Card */}
-                <Card 
+                <Card
                   className="cursor-pointer hover:bg-blue-100 transition-colors bg-blue-50"
                   onClick={() => setCumInProgressDialogOpen(true)}
                 >
@@ -364,7 +344,7 @@ export default function ApartmentDetailPage() {
                   <div className="hidden md:block" />
 
                   {/* Completed Card */}
-                  <Card 
+                  <Card
                     className="cursor-pointer hover:bg-green-100 transition-colors bg-green-50"
                     onClick={() => setLatestCompletedDialogOpen(true)}
                   >
@@ -380,7 +360,7 @@ export default function ApartmentDetailPage() {
                   </Card>
 
                   {/* Defects Card */}
-                  <Card 
+                  <Card
                     className="cursor-pointer hover:bg-orange-100 transition-colors bg-orange-50"
                     onClick={() => setLatestDefectsDialogOpen(true)}
                   >
@@ -396,7 +376,7 @@ export default function ApartmentDetailPage() {
                   </Card>
 
                   {/* In Progress Card */}
-                  <Card 
+                  <Card
                     className="cursor-pointer hover:bg-blue-100 transition-colors bg-blue-50"
                     onClick={() => setLatestInProgressDialogOpen(true)}
                   >
@@ -493,7 +473,7 @@ export default function ApartmentDetailPage() {
                             </div>
                           )}
                         </div>
-                        <Badge 
+                        <Badge
                           style={{
                             backgroundColor: statusColors[item.status as WorkStatus] || '#f97316',
                             color: 'white',
@@ -542,7 +522,7 @@ export default function ApartmentDetailPage() {
                             <div className="text-sm text-muted-foreground mt-1">{item.notes}</div>
                           )}
                         </div>
-                        <Badge 
+                        <Badge
                           style={{
                             backgroundColor: statusColors[item.status as WorkStatus] || '#3b82f6',
                             color: 'white',
@@ -639,7 +619,7 @@ export default function ApartmentDetailPage() {
                                 </div>
                               )}
                             </div>
-                            <Badge 
+                            <Badge
                               style={{
                                 backgroundColor: statusColors[item.status as WorkStatus] || '#f97316',
                                 color: 'white',
@@ -688,7 +668,7 @@ export default function ApartmentDetailPage() {
                                 <div className="text-sm text-muted-foreground mt-1">{item.notes}</div>
                               )}
                             </div>
-                            <Badge 
+                            <Badge
                               style={{
                                 backgroundColor: statusColors[item.status as WorkStatus] || '#3b82f6',
                                 color: 'white',
@@ -707,61 +687,26 @@ export default function ApartmentDetailPage() {
             </>
           )}
 
-          {/* Progress Chart */}
-          {progressHistory.length > 1 && (
+          {/* Defect History Chart */}
+          {data.defectHistoryByCategory && data.defectHistoryByCategory.length > 1 && (
             <Card>
               <CardHeader>
-                <CardTitle>התקדמות לאורך זמן</CardTitle>
+                <CardTitle>היסטוריית טיפול בליקויים</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={deduplicateByDate(progressHistory)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="date"
-                        type="category"
-                        interval="preserveStartEnd"
-                        tickFormatter={(value) => {
-                          const d = new Date(value);
-                          if (isNaN(d.getTime())) return value;
-                          const day = d.getDate().toString().padStart(2, '0');
-                          const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                          const year = d.getFullYear().toString().slice(-2);
-                          return `${day}/${month}/${year}`;
-                        }}
-                      />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip
-                        labelFormatter={(value) => {
-                          const d = new Date(value as string);
-                          const day = d.getDate().toString().padStart(2, '0');
-                          const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                          const year = d.getFullYear().toString().slice(-2);
-                          return `${day}/${month}/${year}`;
-                        }}
-                        formatter={(value) => [`${value}%`, 'התקדמות']}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="progress"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        dot={{ fill: '#3b82f6' }}
-                      />
-                      <Brush
-                        dataKey="date"
-                        height={30}
-                        stroke="#3b82f6"
-                        tickFormatter={(value) => {
-                          const d = new Date(value);
-                          if (isNaN(d.getTime())) return '';
-                          return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
-                        }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <DefectHistoryChart
+                  data={data.defectHistoryByCategory.map((point) => ({
+                    date: point.date,
+                    categoryDefects: point.categoryDefects,
+                  }))}
+                  categories={Array.from(
+                    new Set(
+                      data.defectHistoryByCategory.flatMap((point) =>
+                        Object.keys(point.categoryDefects)
+                      )
+                    )
+                  )}
+                />
               </CardContent>
             </Card>
           )}

@@ -23,7 +23,7 @@ export const DEFAULT_CONFIG: ProgressConfig = {
     KITCHEN: 10,
     OTHER: 15,
   },
-  
+
   // Progress thresholds for different statuses (0-100)
   progressThresholds: {
     VERIFIED_NO_DEFECTS: 90,      // תקין, verified with no issues
@@ -40,16 +40,18 @@ export const DEFAULT_CONFIG: ProgressConfig = {
     NOT_STARTED: 5,               // לא התחיל - not started
     CATEGORY_NEVER_SEEN: 0,       // Category never reported = work not started
   },
-  
+
   // General parameters
   baselineProgress: 30,           // Starting progress (pre-supervision work)
   maxProgress: 95,                // Maximum achievable progress
   defectPenalty: 5,               // Penalty per defect ratio point
   defaultCategoryWeight: 10,      // Weight for unknown categories
-  
+
   // Last updated timestamp
   lastUpdated: null,
 };
+
+export type ProgressModel = 'v1' | 'v2' | 'v3';
 
 export interface ProgressConfig {
   categoryWeights: Record<string, number>;
@@ -163,10 +165,10 @@ export function saveConfig(config: ProgressConfig): void {
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    
+
     // Update timestamp
     config.lastUpdated = new Date().toISOString();
-    
+
     fs.writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2), 'utf-8');
   } catch (error) {
     console.error('Error saving config:', error);
@@ -186,13 +188,13 @@ export interface ValidationResult {
 export function validateConfig(config: ProgressConfig): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  
+
   // Check category weights sum to 100
   const weightSum = Object.values(config.categoryWeights).reduce((a, b) => a + b, 0);
   if (Math.abs(weightSum - 100) > 0.01) {
     errors.push(`משקלי הקטגוריות חייבים להסתכם ל-100% (סה"כ נוכחי: ${weightSum}%)`);
   }
-  
+
   // Check all weights are positive
   for (const [cat, weight] of Object.entries(config.categoryWeights)) {
     if (weight < 0) {
@@ -202,17 +204,17 @@ export function validateConfig(config: ProgressConfig): ValidationResult {
       warnings.push(`משקל קטגוריה "${CATEGORY_HEBREW_NAMES[cat] || cat}" הוא 0 - הקטגוריה לא תשפיע על ההתקדמות`);
     }
   }
-  
+
   // Check thresholds are between 0 and 100
   for (const [key, value] of Object.entries(config.progressThresholds)) {
     if (value < 0 || value > 100) {
       errors.push(`ערך סף "${THRESHOLD_HEBREW_NAMES[key] || key}" חייב להיות בין 0 ל-100`);
     }
   }
-  
+
   // Check logical ordering of thresholds
   const t = config.progressThresholds;
-  
+
   if (t.VERIFIED_NO_DEFECTS <= t.COMPLETED_OK_LATER) {
     warnings.push('ערך "תקין" צריך להיות גבוה יותר מ"בוצע (נראה שוב)"');
   }
@@ -231,7 +233,7 @@ export function validateConfig(config: ProgressConfig): ValidationResult {
   if (t.PENDING <= t.NOT_STARTED) {
     warnings.push('ערך "ממתין" צריך להיות גבוה יותר מ"לא התחיל"');
   }
-  
+
   // Check baseline and max progress
   if (config.baselineProgress < 0 || config.baselineProgress > 100) {
     errors.push('התקדמות בסיס חייבת להיות בין 0 ל-100');
@@ -242,17 +244,17 @@ export function validateConfig(config: ProgressConfig): ValidationResult {
   if (config.baselineProgress >= config.maxProgress) {
     errors.push('התקדמות בסיס חייבת להיות נמוכה מהתקדמות מקסימלית');
   }
-  
+
   // Check default weight
   if (config.defaultCategoryWeight < 0) {
     errors.push('משקל ברירת מחדל לקטגוריה לא יכול להיות שלילי');
   }
-  
+
   // Check defect penalty
   if (config.defectPenalty < 0) {
     errors.push('קנס ליקוי לא יכול להיות שלילי');
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,

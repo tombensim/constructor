@@ -72,7 +72,7 @@ function deduplicateByDate<T extends { date: string }>(data: T[]): T[] {
     dateMap.set(dateKey, item);
   }
   // Return sorted by date
-  return Array.from(dateMap.values()).sort((a, b) => 
+  return Array.from(dateMap.values()).sort((a, b) =>
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 }
@@ -155,7 +155,7 @@ export default function TimelinePage() {
   // Prepare apartment progress data (deduplicated by date)
   const apartmentProgressData = deduplicateByDate(
     data.timelineData.map((d) => {
-      const result: Record<string, number | string> = { date: d.date };
+      const result: { date: string;[key: string]: string | number } = { date: d.date };
       data.apartments.forEach((apt) => {
         result[`apt_${apt}`] = d.apartmentProgress[apt]?.progress || 0;
       });
@@ -176,7 +176,7 @@ export default function TimelinePage() {
   ];
 
   const categoryProgressData = deduplicateByDate(data.categoryProgress.map((d) => {
-    const result: Record<string, number | string> = { date: d.date };
+    const result: { date: string;[key: string]: string | number } = { date: d.date };
     topCategories.forEach((cat) => {
       result[cat] = d.categories[cat]?.progress || 0;
     });

@@ -1,0 +1,78 @@
+--- ID MAP for Apt 7 on Sept 17, 2025 (Total: 8) ---
+
+Item 1:
+  ID: cmkpajlj100cn13u5q28r96xs
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: ELECTRICAL
+  Status: DEFECT
+  Description: חסרות נקודות תקשורת LAN במספר מקומות
+  Notes: ממ"ד, חדר שינה 1, סלון - חסרות נקודות
+  [TARGET CANDIDATE: 5 Sockets?]
+
+Item 2:
+  ID: cmkpajlja00cp13u5rrhoqkek
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: FLOORING
+  Status: COMPLETED
+  Description: עבודות ריצוף בשטח הדירה
+  Notes: פוגה של 3 מ"מ
+  [TARGET CANDIDATE: Partially Done? User said 'Row 2']
+
+Item 3:
+  ID: cmkpajljj00cr13u5unta7qmf
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: AC
+  Status: DEFECT
+  Description: תשתית במיזוג אוויר - שלשת של ציפורים
+  Notes: יש להחליף לתשתית חדשה
+
+Item 4:
+  ID: cmkpajljs00ct13u5uugwyf4q
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: ELECTRICAL
+  Status: DEFECT
+  Description: העברת כבל חשמל בצורה לקויה
+  Notes: יש לשבור את הריצוף ולבטן כנדרש
+  [TARGET CANDIDATE: Electrical damaging flooring?]
+
+Item 5:
+  ID: cmkpajlk200cv13u566kd6gv0
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: WATERPROOFING
+  Status: COMPLETED
+  Description: מילוי סומסום/חול
+  Notes: במידה והמילוי רטוב אין לבצע ריצוף
+
+Item 6:
+  ID: cmkpalftv00kn5sxquk9tu725
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: FLOORING
+  Status: COMPLETED_OK
+  Description: ביצוע בדיקת שיפועים לכיוון הניקוז
+  Notes: בביצוע הבדיקה התקבל שיפוע בין 1%-4% כנדרש על פי התקנות
+
+Item 7:
+  ID: cmkpalfu500kp5sxqqswup2q2
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: FLOORING
+  Status: COMPLETED
+  Description: ביצוע לריצוף מרפסת השמש
+  Notes: None
+  [TARGET CANDIDATE: Partially Done? User said 'Row 2']
+
+Item 8:
+  ID: cmkpalfue00kr5sxqrqze6k7l
+  ReportID: cmkpajlcg00bf13u5jx00llau
+  AptID: cmkpa099g000a10kkf2am83ne
+  Category: ELECTRICAL
+  Status: DEFECT
+  Description: בדיקת תוכנית חשמל על פי תוכנית שינויי דיירים - חסרות נקודות תקשורת LAN
+  Notes: בטיפול - חדר שינה 1, ממ"ד, סלון חסרות נקודות תקשורת LAN. מטבח - דרוש חור בנקודת החשמל הרצפתית
+  [TARGET CANDIDATE: 5 Sockets?]
